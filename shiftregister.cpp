@@ -1,13 +1,16 @@
 /*
- Program to  simulate a binary register that supports shift right and shift left operations and + and - operations.
- */
+Program to  simulate a binary register that supports shift right and shift left operations and + and - operations.
+*/
 #include<iostream>
 #include<unistd.h>
 #include<string>
 #include<cstdio>
 #include<cstdlib>
 #include<vector>
-#include<cmath>
+#include<math.h>
+#include<sstream>
+#include<stdio.h>
+#include<cstring>
 
 using namespace std;
 
@@ -16,6 +19,7 @@ bool checkIfStringIsInteger (string data);
 bool checkLengthOfString(string data, int len);
 bool checkIfStringIsValid (string data);
 bool checkIfStringIsHex(string data);
+string trimInput( string input);
 
 /*
  Class to simulate a binary register.
@@ -28,6 +32,7 @@ public:
     void printBinaryRegister();
     friend BinaryRegister operator +(BinaryRegister& reg1, BinaryRegister& reg2);
     friend BinaryRegister operator -(BinaryRegister& reg1, BinaryRegister& reg2);
+    friend BinaryRegister operator *(BinaryRegister& reg1, BinaryRegister& reg2);
     friend ostream& operator <<(ostream& outs, const BinaryRegister& reg);
     string toDecimal();
     string toHex();
@@ -40,8 +45,7 @@ private:
     string convertHexToBinary(string regVal);
 };
 
-void printRegisterValue(BinaryRegister reg, string regName, bool outDec, bool outHex);
-
+void printRegisterValue(BinaryRegister reg, bool outDec, bool outHex);
 
 int main(int argc, char **argv){
     bool success = true;
@@ -70,34 +74,41 @@ int main(int argc, char **argv){
         switch (c){
             case 'i' :
                 regVal1 = optarg;
+                regVal1 = trimInput(regVal1);
                 break;
             case 's' :
                 regSize1 = optarg;
+                regSize1 = trimInput(regSize1);
+                regSize2 = optarg;
+                regSize2 = trimInput(regSize2);
                 break;
             case 'r' :
                 shiftRight1 = true;
                 shiftRightNum1 = optarg;
+                shiftRightNum1 = trimInput(shiftRightNum1);
                 break;
             case 'l' :
                 shiftLeft1 = true;
                 shiftLeftNum1 = optarg;
+                shiftLeftNum1 = trimInput(shiftLeftNum1);
                 break;
             case 'I' :
                 regVal2 = optarg;
-                break;
-            case 'S' :
-                regSize2 = optarg;
+                regVal2 = trimInput(regVal2);
                 break;
             case 'R' :
                 shiftRight2 = true;
                 shiftRightNum2 = optarg;
+                shiftRightNum2 = trimInput(shiftRightNum2);
                 break;
             case 'L' :
                 shiftLeft2 = true;
                 shiftLeftNum2 = optarg;
+                shiftLeftNum2 = trimInput(shiftLeftNum2);
                 break;
             case 'v' :
                 bitsToInject = optarg;
+                bitsToInject = trimInput(bitsToInject);
                 break;
             case 'p' :
                 printRegister = true;
@@ -110,6 +121,7 @@ int main(int argc, char **argv){
                 break;
             case 'o':
                 operation = optarg;
+                operation = trimInput(operation);
                 break;
             case '?' :
                 if (optopt == 'i') {
@@ -156,6 +168,7 @@ int main(int argc, char **argv){
             default :
                 abort();
         }
+        
     }
     BinaryRegister reg1, reg2, reg3;
     if(checkIfStringIsInteger(regSize1)&&checkIfStringIsValid(regVal1)){
@@ -176,6 +189,7 @@ int main(int argc, char **argv){
     }
     if (shiftRight1 && validInput1) {
         if (checkIfStringIsInteger(shiftRightNum1)) {
+            
             if (bitsToInject == "") {
                 reg1.shiftRight(shiftRightNum1);
             }
@@ -230,6 +244,7 @@ int main(int argc, char **argv){
     }
     if (shiftLeft2 && validInput2) {
         if (checkIfStringIsInteger(shiftLeftNum2)) {
+            
             if (bitsToInject == "") {
                 reg2.shiftLeft(shiftLeftNum2);
             }
@@ -252,16 +267,15 @@ int main(int argc, char **argv){
     else if (operation == "-" && validInput1 && validInput2){
         reg3 = reg1 - reg2;
     }
+    else if (operation == "x" && validInput1 && validInput2){
+        reg3 = reg1 * reg2;
+    }
     else{
         cerr<< "Invalid operation" << endl;
         success = false;
     }
-    if (printRegister && validInput1 && validInput2) {
-        printRegisterValue(reg1, "Register 1 ", printDecimal, printHex);
-        printRegisterValue(reg2, "Register 2 ", printDecimal, printHex);
-        if(operation != ""){
-            printRegisterValue(reg3, "Register 3 ", printDecimal, printHex);
-        }
+    if (printRegister){
+        printRegisterValue(reg3, printDecimal, printHex);
     }
     if (success == true){
         return 0;
@@ -272,27 +286,23 @@ int main(int argc, char **argv){
     
 }
 
+
 /*
  Member function of class BinaryRegister to set values to the register.
  */
 void BinaryRegister::setBinaryRegister(string regVal, string regSize){
-    int regSizeInInt = stoi(regSize);
-    bool negFlag = false;
-    if (regVal[0] != '-') {
-        string regValInBinary = getBinaryValue(regVal);
-        negFlag = false;
-    }
-    else{
-        string regValInBinary = getBinaryValue(regVal.substr(1, regVal.length()-1));
-        negFlag = true;
-    }
-    string regValInBinary = getBinaryValue(regVal);
+    string regValInBinary;
+    char *ptr = new char[regSize.length() + 1];
+    strcpy(ptr, regSize.c_str());
+    int regSizeInInt = atoi(ptr);
+    regValInBinary = getBinaryValue(regVal);
     if (regSizeInInt<= 0) {
         bits.resize(regValInBinary.length());
     }
     else {
         bits.resize(regSizeInInt);
     }
+    
     if (regSizeInInt<= 0) {
         for (int i = 0; i<bits.size(); i++) {
             bits[i] = convertToBool(regValInBinary[i]);
@@ -310,23 +320,12 @@ void BinaryRegister::setBinaryRegister(string regVal, string regSize){
         }
         if(regSizeInInt>regValInBinary.length()){
             for (int i = 0; i<regSizeInInt-regValInBinary.length(); i++) {
-                bits[i] = 0;
-            }
-        }
-    }
-    if (negFlag == true){
-        for (int i = 0; i<bits.size(); i++){
-            bits[i] = !(bits[i]);
-        }
-        bool numToAdd = 1;
-        for  (int i = bits.size()-1; i>=0; i--){
-            if(numToAdd == 1 && bits[i] == 1){
-                bits[i] = 0;
-                numToAdd = 1;
-            }
-            else if(numToAdd == 1 && bits[i] == 0){
-                bits[i] = 1;
-                numToAdd = 0;
+                if (regValInBinary[0] == '1') {
+                    bits[i] = 1;
+                }
+                else{
+                    bits[i] = 0;
+                }
             }
         }
     }
@@ -335,7 +334,7 @@ void BinaryRegister::setBinaryRegister(string regVal, string regSize){
  Member function of class BinaryRegister to print the register.
  */
 void BinaryRegister::printBinaryRegister(){
-    cout<< "Register: ";
+    
     for (int i = 0; i<bits.size(); i++) {
         cout << bits[i];
     }
@@ -346,7 +345,9 @@ void BinaryRegister::printBinaryRegister(){
  Member function of class BinaryRegister to shift register right by specified number of bits.
  */
 void BinaryRegister::shiftRight(string numberOfBits, string bitsToInject){
-    int numberOfBitsInInt = stoi(numberOfBits);
+    char *ptr = new char[numberOfBits.length() + 1];
+    strcpy(ptr, numberOfBits.c_str());
+    int numberOfBitsInInt = atoi(ptr);
     bool bitsToInjectInBool = convertToBool(bitsToInject[0]);
     for (int i = 0; i<numberOfBitsInInt; i++) {
         for (int j = bits.size()-1; j>i; j--){
@@ -359,7 +360,9 @@ void BinaryRegister::shiftRight(string numberOfBits, string bitsToInject){
  Member function of class BinaryRegister to shift register left by specified number of bits.
  */
 void BinaryRegister::shiftLeft(string numberOfBits, string bitsToInject){
-    int numberOfBitsInInt = stoi(numberOfBits);
+    char *ptr = new char[numberOfBits.length() + 1];
+    strcpy(ptr, numberOfBits.c_str());
+    int numberOfBitsInInt = atoi(ptr);
     bool bitsToInjectInBool = convertToBool(bitsToInject[0]);
     for (int i = 0; i<numberOfBitsInInt; i++) {
         for (int j= 0; j<bits.size()-1; j++) {
@@ -381,30 +384,85 @@ bool BinaryRegister::convertToBool(char val){
     }
     return boolVal;
 }
+
 /*
  Member function to resize the register to a bigger size
  */
 void BinaryRegister::resizeBinaryRegister(int newSize){
     int changeInSize = newSize-bits.size();
     bits.resize(newSize);
-    shiftRight(to_string(changeInSize));
-}
+    string s;
+    stringstream out;
+    out << changeInSize;
+    s = out.str();
+    if (bits[0] == 1) {
+        shiftRight(s, "1");
+    }
+    else{
+        shiftRight(s);
+        
+    }
+        
+    }
+
 /*
  Member function that returns a string storing the register's value in decimal.
  */
 string BinaryRegister::toDecimal(){
-    int decVal = 0;
-    for (int i = bits.size()-1 ; i>=0; i--) {
-        decVal = decVal + bits[i]*pow(2, bits.size()-1-i);
+    double decVal = 0;
+    bool negFlag = false;
+    if (bits[0] != 1) {
+        for (int i = bits.size()-1 ; i>=0; i--) {
+            decVal = decVal + bits[i]*pow(2, bits.size()-1-i);
+        }
     }
-    string decValInString = to_string(decVal);
+    else{
+        for (int i = 0; i<bits.size(); i++){
+            bits[i] = !(bits[i]);
+        }
+        bool numToAdd = 1;
+        for  (int i = bits.size()-1; i>=0; i--){
+            if(numToAdd == 1 && bits[i] == 1){
+                bits[i] = 0;
+                numToAdd = 1;
+            }
+            else if(numToAdd == 1 && bits[i] == 0){
+                bits[i] = 1;
+                numToAdd = 0;
+            }
+        }
+        for (int i = bits.size()-1 ; i>=0; i--) {
+            decVal = decVal + bits[i]*pow(2, bits.size()-1-i);
+        }
+        decVal = -1 * decVal;
+        for (int i = 0; i<bits.size(); i++){
+            bits[i] = !(bits[i]);
+        }
+        numToAdd = 1;
+        for  (int i = bits.size()-1; i>=0; i--){
+            if(numToAdd == 1 && bits[i] == 1){
+                bits[i] = 0;
+                numToAdd = 1;
+            }
+            else if(numToAdd == 1 && bits[i] == 0){
+                bits[i] = 1;
+                numToAdd = 0;
+            }
+        }
+
+    }
+    string decValInString;
+    stringstream out;
+    out << decVal;
+    decValInString = out.str();
     return decValInString;
 }
 /*
  Member function that returns a string storing the register's value in hexadecimal.
  */
 string BinaryRegister::toHex(){
-    int val =0;
+    double val = 0;
+    int choice;
     string hexVal = "";
     if(bits.size()%4 != 0){
         resizeBinaryRegister(bits.size() + 4 - bits.size()%4);
@@ -415,10 +473,15 @@ string BinaryRegister::toHex(){
         }
         
         if (val<=9) {
-            hexVal = to_string(val) + hexVal;
+            string valInString;
+            stringstream out;
+            out << val;
+            valInString = out.str();
+            hexVal = valInString + hexVal;
         }
         else{
-            switch (val) {
+            choice = static_cast<int>(val);
+            switch (choice) {
                 case 10:
                     hexVal = "A" + hexVal;
                     break;
@@ -443,6 +506,7 @@ string BinaryRegister::toHex(){
         }
         val = 0;
     }
+    
     return hexVal;
 }
 /*
@@ -467,11 +531,31 @@ string BinaryRegister::getBinaryValue(string regVal){
  Member function of BinaryRegister to convert decimal value to binary
  */
 string BinaryRegister::convertDecimalToBinary(string regVal){
+    bool negFlag;
+    if (regVal[0] != '-') {
+        negFlag = false;
+    }
+    else{
+        regVal = regVal.substr(1, regVal.length()-1);
+        negFlag = true;
+    }
     string binVal = "";
-    int regValInInt = stoi(regVal);
+    char *ptr = new char[regVal.length() + 1];
+    strcpy(ptr, regVal.c_str());
+    int regValInInt = atoi(ptr);
     while (regValInInt>0) {
-        binVal = to_string(regValInInt%2) + binVal;
+        string valInString;
+        stringstream out;
+        out << (regValInInt%2);
+        valInString = out.str();
+        binVal = valInString + binVal;
         regValInInt = regValInInt/2;
+    }
+    if (negFlag == true) {
+        binVal = "1" + binVal;
+    }
+    else{
+        binVal = "0" + binVal;
     }
     return binVal;
 }
@@ -484,14 +568,17 @@ string BinaryRegister::convertHexToBinary(string regVal){
     string newVal = "";
     for (int i = regVal.length()-2; i>=0; i--) {
         if (regVal[i]-'0'<=9) {
-            //cout<< regVal[i]<< endl;
-            newVal = convertDecimalToBinary(to_string(regVal[i]-'0'));
+            string regValInString;
+            stringstream out;
+            out << (regVal[i]-'0');
+            regValInString = out.str();
+            newVal = convertDecimalToBinary(regValInString);
             if (newVal.length() != 4) {
                 for (int j = 0; newVal.length()<4; j++) {
                     newVal = "0" + newVal;
                 }
             }
-            //cout<< "Value " << newVal << endl;
+            
             binVal = newVal + binVal;
         }
         else{
@@ -540,8 +627,11 @@ BinaryRegister operator +(BinaryRegister& reg1, BinaryRegister& reg2){
         newSize = reg2.bits.size();
         reg1.resizeBinaryRegister(newSize);
     }
-    
-    newReg.setBinaryRegister("0",to_string(newSize));
+    string sizeInString;
+    stringstream out;
+    out << newSize;
+    sizeInString = out.str();
+    newReg.setBinaryRegister("0",sizeInString);
     for (int i = newSize-1; i>=0; i--) {
         if (reg1.bits[i]==1 && reg2.bits[i]==1) {
             if (overFlow==1) {
@@ -591,9 +681,12 @@ BinaryRegister operator -( BinaryRegister& reg1, BinaryRegister& reg2){
         newSize = reg2.bits.size();
         reg1.resizeBinaryRegister(newSize);
     }
-    
+    string sizeInString;
+    stringstream out;
+    out << newSize;
+    sizeInString = out.str();
     BinaryRegister complimentReg;
-    complimentReg.setBinaryRegister("0",to_string(newSize));
+    complimentReg.setBinaryRegister("0",sizeInString);
     for (int i = 0; i < newSize; i++) {
         complimentReg.bits[i] = !(reg2.bits[i]);
     }
@@ -606,6 +699,24 @@ BinaryRegister operator -( BinaryRegister& reg1, BinaryRegister& reg2){
     newReg = reg1 + twosComplimentReg;
     
     return newReg;
+}
+
+/*
+Friend function of the BinaryRegister class that overloads * operator.
+ */
+BinaryRegister operator *(BinaryRegister& reg1, BinaryRegister& reg2){
+    BinaryRegister reg3;
+    int newSize;
+    reg1.resizeBinaryRegister((reg2.bits.size())*2);
+    reg3.resizeBinaryRegister((reg2.bits.size())*2);
+    for (int i = 0; i<reg2.bits.size(); i++) {
+        if (reg2.bits[reg2.bits.size()-1]==1) {
+            reg3 = reg3 + reg1;
+        }
+        reg1.shiftLeft("1");
+        reg2.shiftRight("1");
+    }
+    return reg3;
 }
 
 /*
@@ -623,13 +734,12 @@ ostream& operator <<(ostream& outs, const BinaryRegister& reg){
  Returns true if the string can be typecast as integer and false if it can not be.
  */
 bool checkIfStringIsInteger (string data){
-    bool retVal = true;
-    try {
-        stoi(data);
-    } catch (...) {
-        retVal = false;
+    for (int i = 0; i<data.length(); i++) {
+        if (data[i]<48 || data[i]>57) {
+            return false;
+        }
     }
-    return retVal;
+    return true;
 }
 
 /*
@@ -649,15 +759,21 @@ bool checkLengthOfString(string data, int len){
  */
 bool checkIfStringIsValid (string data){
     if (data[data.length()-1] =='D') {
-        return checkIfStringIsInteger(data.substr(0,data.length()-1));
+        if (data[0] != '-') {
+            return checkIfStringIsInteger(data.substr(0,data.length()-1));
+        }
+        else{
+            return checkIfStringIsInteger(data.substr(1,data.length()-2));
+        }
     }
     else if  (data[data.length()-1] =='H') {
         return checkIfStringIsHex(data.substr(0,data.length()-1));
+        
     }
     else{
         return checkIfStringIsBoolean(data);
     }
-
+    
 }
 /*
  Checks whether the string being passed can be typecast to boolean or not.
@@ -690,13 +806,30 @@ bool checkIfStringIsHex(string data){
 /*
  Prints BinaryRegister in the required format
  */
-void printRegisterValue(BinaryRegister reg, string regName, bool outDec, bool outHex) {
-    cout << regName << reg;
+void printRegisterValue(BinaryRegister reg, bool outDec, bool outHex) {
     if (outDec) {
-        cout << " (" << reg.toDecimal() << ")";
+        cout << reg;
+        cout << "(" << reg.toDecimal() << ")";
     }
     if (outHex) {
-        cout << " (0x" << reg.toHex() << ")";
+        cout << reg;
+        cout << "(0x" << reg.toHex() << ")";
+    }
+    if(!outDec && !outHex){
+        cout << reg;
     }
     cout << endl;
+}
+
+/*
+ Trims the input to remove all the white spaces before it
+ */
+string trimInput( string input){
+    string retVal = "";
+    for (int i = 0; i< input.length(); i++) {
+        if (input[i] != ' ') {
+            retVal = retVal + input.substr(i, 1);
+        }
+    }
+    return retVal;
 }
